@@ -1,1 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>電光掲示板</title>
+  <link href="https://fonts.googleapis.com/css2?family=DotGothic16&display=swap" rel="stylesheet">
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: black;
+      color: yellow;
+      height: 100%;
+      overflow: hidden;
+      font-family: 'Arial Black', sans-serif;
+    }
+
+    #controls {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      text-align: center;
+    }
+
+    input[type="text"] {
+      font-size: 2rem;
+      padding: 10px;
+      width: 80vw;
+      max-width: 800px;
+      margin-bottom: 10px;
+    }
+
+    button {
+      font-size: 1.8rem;
+      padding: 10px 30px;
+      background: yellow;
+      color: black;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      margin: 5px;
+    }
+
+    .marquee-wrapper {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+    }
+
+    .marquee {
+      position: absolute;
+      white-space: nowrap;
+      font-size: 25vw;
+      will-change: transform;
+    }
+
+    #backButton {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 10;
+      font-size: 1rem;
+      padding: 5px 15px;
+      background: rgba(255, 255, 0, 0.8);
+      color: black;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      display: none;
+    }
+
+    #speedControl {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      display: none;
+      text-align: center;
+      color: white;
+    }
+
+    #speedControl input[type=range] {
+      width: 300px;
+    }
+
+    #proof {
+      position: absolute;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 1rem;
+      z-index: 5;
+      display: block;
+    }
+
+    #colorControls {
+      margin-bottom: 10px;
+      color: white;
+    }
+
+    @media (max-width: 600px) {
+      .marquee {
+        font-size: 30vw;
+      }
+      input, button {
+        font-size: 1.5rem;
+      }
+      #speedControl input[type=range] {
+        width: 200px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="controls">
+    <div id="colorControls">
+      文字色：<input type="color" id="textColor" value="#ffff00">
+      背景色：<input type="color" id="bgColor" value="#000000">
+    </div>
+    <input type="text" id="textInput" placeholder="流すテキストを入力" />
+    <br />
+    <button onclick="startMarquee()">再生（フルスクリーン）</button>
+    <button onclick="toggleDotFont()" id="dotToggle">点点表示: OFF</button>
+  </div>
+
+  <div id="speedControl">
+    <label for="speedRange">速度：</label>
+    <input type="range" id="speedRange" min="10" max="120" value="30" />
+  </div>
+
+  <button id="backButton" onclick="showControls()">戻る</button>
+
+  <div class="marquee-wrapper">
+    <div class="marquee" id="marqueeText"></div>
+  </div>
+
+  <!-- 作成証明 -->
+  <div id="proof">TOWABIIが作成(無断転載は許しません)</div>
+
+  <script>
+    const marquee = document.getElementById('marqueeText');
+    const speedSlider = document.getElementById('speedRange');
+    const dotToggle = document.getElementById('dotToggle');
+    const proof = document.getElementById('proof');
+    let animationFrame;
+    let running = false;
+    let useDotFont = false;
+
+    function startMarquee() {
+      const text = document.getElementById('textInput').value.trim() || '← テキストが入力されていません';
+      const textColor = document.getElementById('textColor').value;
+      const bgColor = document.getElementById('bgColor').value;
+
+      const repeatedText = Array(20).fill(text + '　').join('');
+      marquee.textContent = repeatedText;
+      marquee.style.color = textColor;
+      document.body.style.backgroundColor = bgColor;
+
+      marquee.style.fontFamily = useDotFont ? "'DotGothic16', monospace" : "'Arial Black', sans-serif";
+
+      document.getElementById('controls').style.display = 'none';
+      document.getElementById('backButton').style.display = 'block';
+      document.getElementById('speedControl').style.display = 'block';
+      document.getElementById('textInput').value = '';
+      speedSlider.value = 30;
+
+      proof.style.display = 'none';  // 再生後に証明テキストを非表示に
+
+      const el = document.documentElement;
+      if (el.requestFullscreen) el.requestFullscreen();
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+      else if (el.msRequestFullscreen) el.msRequestFullscreen();
+
+      running = true;
+      animateMarquee();
+    }
+
+    function animateMarquee() {
+      if (!running) return;
+
+      const speed = parseInt(speedSlider.value, 10);
+      const distance = window.innerWidth + marquee.offsetWidth;
+      const duration = speed * 1000;
+      const start = performance.now();
+
+      function scrollFrame(time) {
+        const elapsed = time - start;
+        const progress = elapsed / duration;
+        const x = window.innerWidth - progress * distance;
+        marquee.style.transform = `translateX(${x}px)`;
+
+        if (progress < 1) {
+          animationFrame = requestAnimationFrame(scrollFrame);
+        } else {
+          setTimeout(() => {
+            if (running) animateMarquee();
+          }, 2000);
+        }
+      }
+
+      marquee.style.transform = `translateX(${window.innerWidth}px)`;
+      animationFrame = requestAnimationFrame(scrollFrame);
+    }
+
+    function showControls() {
+      running = false;
+      cancelAnimationFrame(animationFrame);
+      document.getElementById('controls').style.display = 'block';
+      document.getElementById('backButton').style.display = 'none';
+      document.getElementById('speedControl').style.display = 'none';
+      marquee.textContent = '';
+      marquee.style.transform = 'translateX(100%)';
+      proof.style.display = 'block';  // 戻るボタンで証明テキストを再表示
+    }
+
+    speedSlider.addEventListener('input', () => {
+      if (running) {
+        running = false;
+        cancelAnimationFrame(animationFrame);
+        setTimeout(() => {
+          running = true;
+          animateMarquee();
+        }, 100);
+      }
+    });
+
+    function toggleDotFont() {
+      useDotFont = !useDotFont;
+      dotToggle.textContent = `点点表示: ${useDotFont ? 'ON' : 'OFF'}`;
+    }
+  </script>
+</body>
+</html>
 
